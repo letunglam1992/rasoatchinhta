@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20192%20192%22%3E%3Crect%20width%3D%22192%22%20height%3D%22192%22%20rx%3D%2240%22%20fill%3D%22%2317365d%22%2F%3E%3Cpath%20d%3D%22M48%2029h68l28%2028v105H48z%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M116%2029v28h28%22%20fill%3D%22%23bdd4f6%22%2F%3E%3Cpath%20d%3D%22M66%2076h57M66%2093h42%22%20stroke%3D%22%2317365d%22%20stroke-width%3D%229%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22130%22%20cy%3D%22137%22%20r%3D%2232%22%20fill%3D%22%23175cd3%22%2F%3E%3Cpath%20d%3D%22m113%20137%2011%2011%2023-25%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%229%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#17365d">
 <title>Rà soát thể thức &amp; chính tả văn bản</title>
 <script>
 /*!
@@ -399,7 +401,7 @@ input[type=file] { max-width:100%; box-sizing:border-box; }
 </head>
 <body>
 <header>
-  <h1>ỨNG DỤNG RÀ SOÁT THỂ THỨC &amp; CHÍNH TẢ VĂN BẢN</h1>
+  <h1 style="display:flex;align-items:center;gap:12px"><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20192%20192%22%3E%3Crect%20width%3D%22192%22%20height%3D%22192%22%20rx%3D%2240%22%20fill%3D%22%2317365d%22%2F%3E%3Cpath%20d%3D%22M48%2029h68l28%2028v105H48z%22%20fill%3D%22white%22%2F%3E%3Cpath%20d%3D%22M116%2029v28h28%22%20fill%3D%22%23bdd4f6%22%2F%3E%3Cpath%20d%3D%22M66%2076h57M66%2093h42%22%20stroke%3D%22%2317365d%22%20stroke-width%3D%229%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%22130%22%20cy%3D%22137%22%20r%3D%2232%22%20fill%3D%22%23175cd3%22%2F%3E%3Cpath%20d%3D%22m113%20137%2011%2011%2023-25%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%229%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E" width="44" height="44" alt="" style="flex-shrink:0">ỨNG DỤNG RÀ SOÁT THỂ THỨC &amp; CHÍNH TẢ VĂN BẢN</h1>
   <p>Theo Nghị định 30/2020/NĐ-CP · Quy định 399-QĐ/TW · Hướng dẫn 05-HD/VPTW</p>
   <span class="badge-local">⬤ Chạy 100% trên trình duyệt của bạn — file không gửi lên máy chủ nào (trừ khi bạn chọn rà chính tả bằng AI)</span>
 </header>
@@ -431,7 +433,13 @@ input[type=file] { max-width:100%; box-sizing:border-box; }
       <div id="claudeKeyBox" style="display:none;">
         <label for="claudeApiKey">Claude API key</label>
         <input type="password" id="claudeApiKey" placeholder="sk-ant-...">
-        <div class="hint">Key được lưu trên trình duyệt của bạn (localStorage) cho các lần sử dụng sau để dùng lại lần sau, không gửi tới đâu khác ngoài api.anthropic.com.</div>
+<div class="api-key-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          <button type="button" id="claudeSaveKey">Lưu khóa API</button>
+          <button type="button" id="claudeDeleteKey">Xóa khóa đã lưu</button>
+          <button type="button" id="claudeToggleKey" aria-pressed="false" aria-controls="claudeApiKey">Hiện khóa</button>
+        </div>
+        <div id="claudeKeyStatus" class="hint" role="status" aria-live="polite"></div>
+        <div class="hint">Bấm “Lưu khóa API” để lưu trên trình duyệt này cho lần sau. Chỉ lưu trên thiết bị cá nhân, không gửi tới đâu khác ngoài api.anthropic.com.</div>
         <details class="key-guide">
           <summary>❓ Chưa có Claude API key? Xem hướng dẫn lấy key</summary>
           <ol>
@@ -446,7 +454,13 @@ input[type=file] { max-width:100%; box-sizing:border-box; }
       <div id="geminiKeyBox" style="display:none;">
         <label for="geminiApiKey">Gemini API key</label>
         <input type="password" id="geminiApiKey" placeholder="AIza...">
-        <div class="hint">Key được lưu trên trình duyệt của bạn (localStorage) cho các lần sử dụng sau để dùng lại lần sau, không gửi tới đâu khác ngoài generativelanguage.googleapis.com.</div>
+<div class="api-key-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          <button type="button" id="geminiSaveKey">Lưu khóa API</button>
+          <button type="button" id="geminiDeleteKey">Xóa khóa đã lưu</button>
+          <button type="button" id="geminiToggleKey" aria-pressed="false" aria-controls="geminiApiKey">Hiện khóa</button>
+        </div>
+        <div id="geminiKeyStatus" class="hint" role="status" aria-live="polite"></div>
+        <div class="hint">Bấm “Lưu khóa API” để lưu trên trình duyệt này cho lần sau. Chỉ lưu trên thiết bị cá nhân, không gửi tới đâu khác ngoài generativelanguage.googleapis.com.</div>
         <details class="key-guide" open>
           <summary>❓ Chưa có Gemini API key? Xem hướng dẫn lấy key (miễn phí, không cần thẻ)</summary>
           <ol>
@@ -2081,10 +2095,35 @@ zoomInBtn.addEventListener('click', () => { state.zoomLevel = Math.min(ZOOM_MAX,
 zoomOutBtn.addEventListener('click', () => { state.zoomLevel = Math.max(ZOOM_MIN, +(state.zoomLevel - ZOOM_STEP).toFixed(2)); applyZoom(); });
 zoomResetBtn.addEventListener('click', () => { state.zoomLevel = 1; applyZoom(); });
 
-try {
-  claudeApiKeyInput.value = localStorage.getItem('rasoat_claude_key') || '';
-  geminiApiKeyInput.value = localStorage.getItem('rasoat_gemini_key') || '';
-} catch (e) {}
+function initApiKeyControls(provider, input) {
+  const storageKey = 'rasoat_' + provider + '_key';
+  const status = document.getElementById(provider + 'KeyStatus');
+  const toggle = document.getElementById(provider + 'ToggleKey');
+  try {
+    input.value = localStorage.getItem(storageKey) || '';
+    status.textContent = input.value ? 'Đã nạp khóa đã lưu trên trình duyệt này.' : 'Chưa lưu khóa. Có thể nhập khóa để dùng cho phiên này.';
+  } catch (e) { status.textContent = 'Trình duyệt không cho phép lưu khóa. Bạn vẫn có thể nhập để sử dụng.'; }
+  input.addEventListener('input', () => { status.textContent = 'Khóa đang nhập chưa được lưu. Bấm “Lưu khóa API” để lưu thay đổi.'; });
+  document.getElementById(provider + 'SaveKey').addEventListener('click', () => {
+    const value = input.value.trim();
+    if (!value) { status.textContent = 'Nhập khóa API trước khi lưu.'; input.focus(); return; }
+    try { localStorage.setItem(storageKey, value); status.textContent = 'Đã lưu khóa trên trình duyệt này. Chưa kiểm tra tính hợp lệ với nhà cung cấp.'; }
+    catch (e) { status.textContent = 'Không lưu được khóa. Bạn vẫn có thể sử dụng khóa trong phiên này.'; }
+  });
+  document.getElementById(provider + 'DeleteKey').addEventListener('click', () => {
+    try {
+      localStorage.removeItem(storageKey); input.value = ''; input.type = 'password';
+      toggle.textContent = 'Hiện khóa'; toggle.setAttribute('aria-pressed','false');
+      status.textContent = 'Đã xóa khóa đã lưu trên trình duyệt này.';
+    } catch (e) { status.textContent = 'Không xóa được khóa đã lưu. Hãy kiểm tra quyền lưu dữ liệu của trình duyệt.'; }
+  });
+  toggle.addEventListener('click', () => {
+    const visible = input.type === 'password'; input.type = visible ? 'text' : 'password';
+    toggle.textContent = visible ? 'Ẩn khóa' : 'Hiện khóa'; toggle.setAttribute('aria-pressed',String(visible));
+  });
+}
+initApiKeyControls('claude', claudeApiKeyInput);
+initApiKeyControls('gemini', geminiApiKeyInput);
 
 document.querySelectorAll('input[name="phuongPhapChinhTa"]').forEach(r => {
   r.addEventListener('change', () => {
@@ -2204,7 +2243,7 @@ form.addEventListener('submit', async (e) => {
   const claudeApiKey = claudeApiKeyInput.value.trim();
   const geminiApiKey = geminiApiKeyInput.value.trim();
 
-  try { localStorage.setItem('rasoat_claude_key', claudeApiKey); localStorage.setItem('rasoat_gemini_key', geminiApiKey); } catch (e) {}
+  // Keys are persisted only by the explicit Save action.
 
   if (!file.size || file.size > 30 * 1024 * 1024) {
     const box = document.getElementById('error'); box.textContent = 'Chọn file DOCX có nội dung, dung lượng tối đa 30 MB.'; box.style.display = 'block'; return;
