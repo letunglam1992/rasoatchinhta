@@ -1,0 +1,11 @@
+name = "rasoat-chinhta-ai"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[ai]
+binding = "AI"
+
+# Đặt mã truy cập bí mật (khuyến nghị):  npx wrangler secret put APP_TOKEN
+# Giới hạn origin (tuỳ chọn), ví dụ:
+# [vars]
+# ALLOWED_ORIGIN = "https://letunglam1992.github.io,null"

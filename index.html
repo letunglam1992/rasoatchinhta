@@ -426,9 +426,10 @@ input[type=file] { max-width:100%; box-sizing:border-box; }
         <label><input type="radio" name="phuongPhapChinhTa" value="tu-dien" checked> Từ điển tĩnh (offline, chạy ngay trên máy)</label>
         <label><input type="radio" name="phuongPhapChinhTa" value="claude"> Claude AI</label>
         <label><input type="radio" name="phuongPhapChinhTa" value="gemini"> Gemini AI</label>
+        <label><input type="radio" name="phuongPhapChinhTa" value="cloudflare"> Cloudflare Workers AI (miễn phí)</label>
         <label><input type="radio" name="phuongPhapChinhTa" value="khong"> Không rà chính tả</label>
       </div>
-      <div class="hint">Từ điển tĩnh: chạy offline hoàn toàn trên máy, chỉ bắt lỗi gõ/sai dấu rõ ràng, có gợi ý sửa tham khảo. AI (Claude/Gemini): bắt được cả lỗi dùng từ sai ngữ cảnh, cần API key và kết nối mạng — nội dung văn bản sẽ được gửi tới máy chủ Anthropic/Google để phân tích.</div>
+      <div class="hint">Từ điển tĩnh: chạy offline hoàn toàn trên máy, chỉ bắt lỗi gõ/sai dấu rõ ràng, có gợi ý sửa tham khảo. AI (Claude/Gemini/Cloudflare): bắt được cả lỗi dùng từ sai ngữ cảnh, cần kết nối mạng — nội dung văn bản sẽ được gửi tới máy chủ Anthropic/Google/Cloudflare để phân tích. Cloudflare Workers AI dùng hạn mức miễn phí 10.000 Neurons/ngày, cần tự triển khai 1 Worker nhỏ (có hướng dẫn và mã nguồn ngay bên dưới khi chọn).</div>
 
       <div id="claudeKeyBox" style="display:none;">
         <label for="claudeApiKey">Claude API key</label>
@@ -470,6 +471,40 @@ input[type=file] { max-width:100%; box-sizing:border-box; }
             <li>Dán vào ô "Gemini API key" ở trên. Ứng dụng chỉ lưu key trên trình duyệt của bạn, không gửi cho bên thứ ba nào khác ngoài Google.</li>
           </ol>
           <div class="hint">Lưu ý bảo mật: không chia sẻ key này cho người khác hoặc đăng công khai — ai có key đều có thể dùng dưới tên tài khoản Google của bạn. Nếu nghi ngờ lộ key, vào lại trang trên để xoá và tạo key mới.</div>
+        </details>
+      </div>
+      <div id="cloudflareKeyBox" style="display:none;">
+        <label for="cfWorkerUrl">Địa chỉ Cloudflare Worker (URL)</label>
+        <input type="text" id="cfWorkerUrl" placeholder="https://rasoat-chinhta-ai.ten-tai-khoan.workers.dev" autocomplete="off" spellcheck="false">
+        <label for="cfModel">Mô hình AI</label>
+        <select id="cfModel" style="width:100%;padding:9px 10px;border:1px solid #c9c2ae;border-radius:4px;font-family:inherit;font-size:14px;background:#fffdf8;">
+          <option value="@cf/aisingapore/gemma-sea-lion-v4-27b-it">SEA-LION v4 27B (huấn luyện cho các ngôn ngữ Đông Nam Á, có tiếng Việt)</option>
+          <option value="@cf/google/gemma-4-26b-a4b-it">Gemma 4 26B (đa ngôn ngữ, 140+ ngôn ngữ)</option>
+          <option value="@cf/zai-org/glm-4.7-flash">GLM-4.7 Flash (nhanh, đa ngôn ngữ)</option>
+        </select>
+        <label for="cfAppToken">Mã truy cập APP_TOKEN (nếu đã đặt trong Worker)</label>
+        <input type="password" id="cfAppToken" placeholder="Chuỗi bí mật bạn tự đặt" autocomplete="off">
+        <div class="api-key-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          <button type="button" id="cloudflareSaveKey">Lưu cấu hình</button>
+          <button type="button" id="cloudflareDeleteKey">Xóa cấu hình đã lưu</button>
+          <button type="button" id="cloudflareToggleKey" aria-pressed="false" aria-controls="cfAppToken">Hiện mã</button>
+          <button type="button" id="cloudflareTestBtn">Kiểm tra kết nối</button>
+        </div>
+        <div id="cloudflareKeyStatus" class="hint" role="status" aria-live="polite"></div>
+        <div class="hint">Văn bản được gửi tới Worker do chính bạn triển khai, rồi tới Cloudflare Workers AI. Cấu hình chỉ lưu trên trình duyệt này. Không cần API token của Cloudflare trong trình duyệt.</div>
+        <details class="key-guide" open>
+          <summary>❓ Chưa có Worker? Xem hướng dẫn tạo (miễn phí, khoảng 5 phút)</summary>
+          <ol>
+            <li>Đăng ký/đăng nhập tại <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a> (gói Workers Free).</li>
+            <li>Vào <b>Workers &amp; Pages</b> → <b>Create</b> → <b>Create Worker</b>, đặt tên (VD: <code>rasoat-chinhta-ai</code>) → <b>Deploy</b> → <b>Edit code</b>, xóa mã mẫu rồi dán toàn bộ mã ở khung dưới → <b>Deploy</b>.</li>
+            <li>Vào <b>Settings</b> → <b>Bindings</b> → <b>Add</b> → <b>Workers AI</b>, đặt tên biến đúng là <code>AI</code>, lưu và deploy lại.</li>
+            <li>(Khuyến nghị) <b>Settings</b> → <b>Variables and Secrets</b> → thêm secret <code>APP_TOKEN</code> là một chuỗi bí mật tự đặt, để người khác biết địa chỉ Worker cũng không dùng hết hạn mức của bạn. Nhập cùng chuỗi đó vào ô "Mã truy cập" ở trên.</li>
+            <li>Sao chép địa chỉ Worker (dạng <code>https://…workers.dev</code>) dán vào ô URL ở trên, bấm <b>Lưu cấu hình</b> rồi <b>Kiểm tra kết nối</b>.</li>
+          </ol>
+          <div class="hint">Tên menu trên giao diện Cloudflare có thể khác đôi chút theo thời điểm. Hạn mức miễn phí: 10.000 Neurons/ngày, đặt lại lúc 00:00 UTC (7:00 sáng giờ Việt Nam); hết hạn mức app sẽ báo lỗi và bạn có thể dùng lại từ điển tĩnh. Mỗi tệp văn bản được chia thành nhiều đoạn nhỏ để gửi lần lượt.</div>
+          <label for="cfWorkerSource" style="margin-top:12px">Mã nguồn Worker (dán vào bước 2)</label>
+          <textarea id="cfWorkerSource" readonly rows="10" spellcheck="false" style="width:100%;box-sizing:border-box;font-family:'Courier New',monospace;font-size:12px;border:1px solid #c9c2ae;border-radius:4px;background:#fffdf8;padding:8px;"></textarea>
+          <button type="button" id="cfCopySourceBtn" style="margin-top:8px">Sao chép mã nguồn</button>
         </details>
       </div>
 
@@ -2007,12 +2042,170 @@ async function checkWithGeminiBrowser(fullText, apiKey, signal) {
   return { phuongPhap: 'gemini-ai', soLoi: (parsed.loi || []).length, chiTiet: parsed.loi || [] };
 }
 
+// ============ Cloudflare Workers AI (qua Worker do người dùng tự triển khai) ============
+const CF_WORKER_SOURCE = "// Cloudflare Worker — cầu nối rà soát chính tả bằng Workers AI cho app \"Rà soát văn bản\".\n// Trình duyệt không gọi trực tiếp api.cloudflare.com được (không có CORS, và không nên để\n// API token trong trình duyệt), nên app gọi Worker này; Worker dùng binding Workers AI (env.AI).\n//\n// Cấu hình trong Cloudflare:\n//   - Binding \"Workers AI\" đặt tên biến là: AI           (bắt buộc)\n//   - Secret  APP_TOKEN                                   (khuyến nghị: chuỗi bí mật tự đặt)\n//   - Biến    ALLOWED_ORIGIN                              (tuỳ chọn: danh sách origin, cách nhau bởi dấu phẩy;\n//                                                          bỏ trống = cho mọi origin. Mở file từ ổ đĩa có origin \"null\")\n\nconst ALLOWED_MODELS = [\n  '@cf/aisingapore/gemma-sea-lion-v4-27b-it',\n  '@cf/google/gemma-4-26b-a4b-it',\n  '@cf/zai-org/glm-4.7-flash',\n];\nconst DEFAULT_MODEL = ALLOWED_MODELS[0];\nconst MAX_BODY_CHARS = 60000;   // chặn yêu cầu quá lớn\nconst MAX_OUTPUT_TOKENS = 4096;\n\nfunction corsHeaders(request, env) {\n  const h = {\n    'Access-Control-Allow-Methods': 'POST, OPTIONS',\n    'Access-Control-Allow-Headers': 'Content-Type, X-App-Token',\n    'Access-Control-Max-Age': '86400',\n    'Vary': 'Origin',\n  };\n  const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean);\n  const origin = request.headers.get('Origin');\n  if (allowed.length === 0) h['Access-Control-Allow-Origin'] = '*';\n  else if (origin && allowed.includes(origin)) h['Access-Control-Allow-Origin'] = origin;\n  return h;\n}\n\nfunction reply(body, status, headers) {\n  return new Response(JSON.stringify(body), {\n    status,\n    headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8' },\n  });\n}\n\n// Mỗi mô hình trả về một dạng khác nhau; chuẩn hoá về chuỗi văn bản.\nfunction extractText(out) {\n  if (typeof out === 'string') return out;\n  if (!out || typeof out !== 'object') return '';\n  if (typeof out.response === 'string') return out.response;\n  if (out.response && typeof out.response === 'object') return JSON.stringify(out.response);\n  const choice = out.choices && out.choices[0];\n  if (choice && choice.message && typeof choice.message.content === 'string') return choice.message.content;\n  if (choice && typeof choice.text === 'string') return choice.text;\n  return JSON.stringify(out);\n}\n\nexport default {\n  async fetch(request, env) {\n    const headers = corsHeaders(request, env);\n    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });\n    if (request.method !== 'POST') return reply({ error: 'Chỉ hỗ trợ phương thức POST.' }, 405, headers);\n\n    if (env.APP_TOKEN && request.headers.get('X-App-Token') !== env.APP_TOKEN) {\n      return reply({ error: 'Mã truy cập (APP_TOKEN) không đúng hoặc còn thiếu.' }, 401, headers);\n    }\n    if (!env.AI) {\n      return reply({ error: 'Worker chưa gắn binding Workers AI (tên biến phải là AI).' }, 500, headers);\n    }\n\n    const raw = await request.text();\n    if (raw.length > MAX_BODY_CHARS) return reply({ error: 'Yêu cầu quá lớn.' }, 413, headers);\n\n    let payload;\n    try { payload = JSON.parse(raw); } catch (e) { return reply({ error: 'Nội dung yêu cầu không phải JSON hợp lệ.' }, 400, headers); }\n\n    const model = payload.model || DEFAULT_MODEL;\n    if (!ALLOWED_MODELS.includes(model)) return reply({ error: 'Mô hình không nằm trong danh sách cho phép: ' + model }, 400, headers);\n\n    const messages = Array.isArray(payload.messages)\n      ? payload.messages\n          .filter(m => m && typeof m.content === 'string' && ['system', 'user', 'assistant'].includes(m.role))\n          .map(m => ({ role: m.role, content: m.content }))\n      : [];\n    if (messages.length === 0) return reply({ error: 'Thiếu trường messages.' }, 400, headers);\n\n    const maxTokens = Math.min(Math.max(parseInt(payload.max_tokens, 10) || 2048, 64), MAX_OUTPUT_TOKENS);\n\n    try {\n      const out = await env.AI.run(model, { messages, max_tokens: maxTokens, temperature: 0 });\n      return reply({ text: extractText(out), model }, 200, headers);\n    } catch (e) {\n      const msg = String((e && e.message) || e);\n      // 3036: hết hạn mức Neurons miễn phí trong ngày; 3040: hết công suất tạm thời; 5035: mô hình cần gói trả phí.\n      const status = /3036|3040|429|capacity|limit/i.test(msg) ? 429 : (/5035|403/.test(msg) ? 403 : 502);\n      return reply({ error: msg }, status, headers);\n    }\n  },\n};\n";
+const CF_CHUNK_CHARS = 4500;       // ~ vài nghìn token/đoạn: an toàn về độ dài đầu ra và chất lượng
+const CF_MAX_OUTPUT_TOKENS = 2048;
+
+function splitIntoChunks(fullText, maxChars) {
+  const chunks = [];
+  let cur = '';
+  const flush = () => { if (cur.trim()) chunks.push(cur); cur = ''; };
+  for (const line of String(fullText || '').split('\n')) {
+    let rest = line;
+    // Dòng quá dài: cắt tại khoảng trắng gần nhất trước giới hạn.
+    while (rest.length > maxChars) {
+      let cut = rest.lastIndexOf(' ', maxChars);
+      if (cut < maxChars * 0.5) cut = maxChars;
+      if (cur.length + cut + 1 > maxChars) flush();
+      cur += (cur ? '\n' : '') + rest.slice(0, cut);
+      flush();
+      rest = rest.slice(cut).trimStart();
+    }
+    if (cur.length + rest.length + 1 > maxChars) flush();
+    cur += (cur ? '\n' : '') + rest;
+  }
+  flush();
+  return chunks;
+}
+
+// Bộ phân tích JSON chịu lỗi: mô hình nhỏ hay thêm lời dẫn, khối ```json, hoặc thẻ <think>.
+function parseLooseSpellJson(text) {
+  const t = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```(?:json)?/gi, '').trim();
+  // Thử lần lượt: đoạn từ "[" đầu tới "]" cuối (mảng trần), rồi đoạn từ "{" đầu tới "}" cuối (đối tượng {"loi": [...]}).
+  const spans = [['[', ']'], ['{', '}']].map(([o, c]) => {
+    const i = t.indexOf(o), j = t.lastIndexOf(c);
+    return i >= 0 && j > i ? t.slice(i, j + 1) : null;
+  }).filter(Boolean);
+  if (spans.length === 0) throw new Error('AI không trả về JSON.');
+  let parsedAny = false;
+  for (const span of spans) {
+    let obj;
+    try { obj = JSON.parse(span); } catch (e) { continue; }
+    parsedAny = true;
+    if (Array.isArray(obj)) return obj;
+    if (obj && Array.isArray(obj.loi)) return obj.loi;
+  }
+  throw new Error(parsedAny ? 'AI trả về JSON sai cấu trúc (thiếu "loi").' : 'AI trả về JSON không hợp lệ.');
+}
+
+// Lọc kết quả: mô hình nhỏ hay "bịa" lỗi. Chỉ giữ lỗi có tuSai thật sự xuất hiện trong đoạn văn bản
+// và có đề xuất khác với từ gốc.
+function sanitizeSpellItems(list, chunkText) {
+  const kept = []; let dropped = 0;
+  for (const c of list) {
+    if (!c || typeof c !== 'object') { dropped++; continue; }
+    const tuSai = typeof c.tuSai === 'string' ? c.tuSai.trim() : '';
+    const deXuat = typeof c.deXuat === 'string' ? c.deXuat.trim() : '';
+    if (!tuSai || !deXuat || tuSai === deXuat || !chunkText.includes(tuSai)) { dropped++; continue; }
+    kept.push({
+      cauGoc: typeof c.cauGoc === 'string' ? c.cauGoc.trim() : '',
+      tuSai, deXuat,
+      giaiThich: typeof c.giaiThich === 'string' ? c.giaiThich.trim() : '',
+    });
+  }
+  return { kept, dropped };
+}
+
+class CloudflareApiError extends Error {
+  constructor(message, status) { super(message); this.name = 'CloudflareApiError'; this.status = status; }
+}
+
+function describeCloudflareError(status, detail) {
+  const d = String(detail || '').slice(0, 300);
+  if (status === 401) return 'Mã truy cập APP_TOKEN không đúng hoặc còn thiếu.';
+  if (status === 429) return 'Đã hết hạn mức miễn phí trong ngày (10.000 Neurons, đặt lại lúc 00:00 UTC = 7:00 sáng giờ VN) hoặc Cloudflare tạm hết công suất. Thử lại sau hoặc dùng từ điển tĩnh. Chi tiết: ' + d;
+  if (status === 403) return 'Mô hình này có thể yêu cầu gói Workers Paid — hãy chọn mô hình khác. Chi tiết: ' + d;
+  if (status === 413) return 'Đoạn văn bản gửi đi quá lớn đối với Worker.';
+  return `Worker/Cloudflare lỗi (${status}): ${d}`;
+}
+
+async function callCloudflareWorker(cfg, prompt, signal) {
+  let resp;
+  try {
+    resp = await fetch(cfg.url, {
+      method: 'POST',
+      signal,
+      headers: Object.assign({ 'Content-Type': 'application/json' }, cfg.token ? { 'X-App-Token': cfg.token } : {}),
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: CF_MAX_OUTPUT_TOKENS,
+        messages: [
+          { role: 'system', content: 'Bạn là chuyên gia chính tả tiếng Việt cho văn bản hành chính. Chỉ trả lời bằng một đối tượng JSON hợp lệ, không thêm lời dẫn hay giải thích bên ngoài JSON.' },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    throw new CloudflareApiError('Không kết nối được tới Worker. Kiểm tra lại địa chỉ URL, kết nối mạng, và cấu hình ALLOWED_ORIGIN của Worker (nếu mở app từ file trên ổ đĩa thì origin là "null").', 0);
+  }
+  let data = null, rawText = '';
+  try { rawText = await resp.text(); data = JSON.parse(rawText); } catch (e) { /* giữ rawText để báo lỗi */ }
+  if (!resp.ok) throw new CloudflareApiError(describeCloudflareError(resp.status, (data && data.error) || rawText), resp.status);
+  if (!data || typeof data.text !== 'string') throw new CloudflareApiError('Worker trả về dữ liệu không đúng định dạng (thiếu trường "text"). Hãy đảm bảo đã dán đúng mã nguồn Worker ở phần hướng dẫn.', resp.status);
+  return data.text;
+}
+
+function validateCloudflareConfig(cfg) {
+  if (!cfg.url) throw new Error('Thiếu địa chỉ Cloudflare Worker (URL).');
+  if (!/^https:\/\/[^\s]+$/i.test(cfg.url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(cfg.url)) {
+    throw new Error('Địa chỉ Worker phải bắt đầu bằng https:// (VD: https://rasoat-chinhta-ai.ten-tai-khoan.workers.dev).');
+  }
+}
+
+async function checkWithCloudflareBrowser(fullText, cfg, signal, onProgress) {
+  validateCloudflareConfig(cfg);
+  const chunks = splitIntoChunks(fullText, CF_CHUNK_CHARS);
+  if (chunks.length === 0) return { phuongPhap: 'cloudflare-ai', soLoi: 0, chiTiet: [], luuY: '' };
+
+  const all = [], seen = new Set();
+  let dropped = 0, failedChunks = 0, lastError = null, stoppedEarly = false;
+  for (let i = 0; i < chunks.length && !stoppedEarly; i++) {
+    if (signal && signal.aborted) { const e = new Error('CANCELLED'); e.name = 'AbortError'; throw e; }
+    if (onProgress) onProgress(i + 1, chunks.length);
+    let list = null;
+    for (let attempt = 0; attempt < 2 && list === null; attempt++) {
+      try {
+        const text = await callCloudflareWorker(cfg, SPELL_PROMPT(chunks[i]), signal);
+        list = parseLooseSpellJson(text);
+      } catch (err) {
+        if (err && err.name === 'AbortError') throw err;
+        lastError = err;
+        const status = err instanceof CloudflareApiError ? err.status : null;
+        // Lỗi cấu hình (không kết nối/401/403/413): dừng ngay, thử lại cũng vô ích.
+        if (status !== null && [0, 401, 403, 413].includes(status)) throw err;
+        if (attempt === 0) { await new Promise(r => setTimeout(r, status === 429 ? 3000 : 1500)); continue; }
+        // Hết hạn mức/công suất kéo dài: dừng, giữ lại kết quả các đoạn đã rà.
+        if (status === 429) { stoppedEarly = true; failedChunks += chunks.length - i; }
+      }
+    }
+    if (stoppedEarly) break;
+    if (list === null) { failedChunks++; continue; }
+    const { kept, dropped: d } = sanitizeSpellItems(list, chunks[i]);
+    dropped += d;
+    for (const c of kept) {
+      const key = c.tuSai + '|' + c.cauGoc;
+      if (seen.has(key)) continue;
+      seen.add(key); all.push(c);
+    }
+  }
+  if (failedChunks === chunks.length) throw lastError || new Error('Không nhận được kết quả hợp lệ từ AI.');
+
+  const notes = [`Rà bằng ${cfg.model} qua Cloudflare Workers AI, chia ${chunks.length} đoạn.`];
+  if (dropped) notes.push(`Đã tự loại ${dropped} mục AI báo nhưng không khớp văn bản gốc hoặc không có đề xuất sửa.`);
+  if (failedChunks) notes.push(`⚠ ${failedChunks}/${chunks.length} đoạn chưa được rà (${stoppedEarly ? 'hết hạn mức/công suất của Cloudflare' : 'lỗi hoặc AI trả dữ liệu sai định dạng'}) — kết quả chưa đầy đủ, nên chạy lại sau.`);
+  notes.push('Mô hình mã nguồn mở có thể báo nhầm hoặc bỏ sót; cần đối chiếu thủ công trước khi áp dụng sửa.');
+  return { phuongPhap: 'cloudflare-ai', soLoi: all.length, chiTiet: all, luuY: notes.join(' ') };
+}
+
 
 // ============ UI: điều phối, gọi các hàm xử lý và render kết quả ============
 
 const form = document.getElementById('form');
 const claudeKeyBox = document.getElementById('claudeKeyBox');
 const geminiKeyBox = document.getElementById('geminiKeyBox');
+const cloudflareKeyBox = document.getElementById('cloudflareKeyBox');
 const claudeApiKeyInput = document.getElementById('claudeApiKey');
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const fileInput = document.getElementById('file');
@@ -2125,12 +2318,77 @@ function initApiKeyControls(provider, input) {
 initApiKeyControls('claude', claudeApiKeyInput);
 initApiKeyControls('gemini', geminiApiKeyInput);
 
+// ---------- Cloudflare Workers AI: cấu hình (URL Worker, mô hình, mã truy cập) ----------
+const cfWorkerUrlInput = document.getElementById('cfWorkerUrl');
+const cfModelSelect = document.getElementById('cfModel');
+const cfAppTokenInput = document.getElementById('cfAppToken');
+
+function getCloudflareConfig() {
+  return { url: cfWorkerUrlInput.value.trim(), model: cfModelSelect.value, token: cfAppTokenInput.value.trim() };
+}
+
+(function initCloudflareControls() {
+  const K_URL = 'rasoat_cf_url', K_MODEL = 'rasoat_cf_model', K_TOKEN = 'rasoat_cf_token';
+  const status = document.getElementById('cloudflareKeyStatus');
+  const toggle = document.getElementById('cloudflareToggleKey');
+  document.getElementById('cfWorkerSource').value = CF_WORKER_SOURCE;
+  try {
+    cfWorkerUrlInput.value = localStorage.getItem(K_URL) || '';
+    const m = localStorage.getItem(K_MODEL);
+    if (m && Array.from(cfModelSelect.options).some(o => o.value === m)) cfModelSelect.value = m;
+    cfAppTokenInput.value = localStorage.getItem(K_TOKEN) || '';
+    status.textContent = cfWorkerUrlInput.value ? 'Đã nạp cấu hình đã lưu trên trình duyệt này.' : 'Chưa lưu cấu hình. Làm theo hướng dẫn bên dưới để tạo Worker.';
+  } catch (e) { status.textContent = 'Trình duyệt không cho phép lưu cấu hình. Bạn vẫn có thể nhập để dùng cho phiên này.'; }
+
+  document.getElementById('cloudflareSaveKey').addEventListener('click', () => {
+    const cfg = getCloudflareConfig();
+    try { validateCloudflareConfig(cfg); } catch (e) { status.textContent = e.message; cfWorkerUrlInput.focus(); return; }
+    try {
+      localStorage.setItem(K_URL, cfg.url); localStorage.setItem(K_MODEL, cfg.model);
+      if (cfg.token) localStorage.setItem(K_TOKEN, cfg.token); else localStorage.removeItem(K_TOKEN);
+      status.textContent = 'Đã lưu cấu hình trên trình duyệt này. Bấm “Kiểm tra kết nối” để thử.';
+    } catch (e) { status.textContent = 'Không lưu được cấu hình. Bạn vẫn có thể dùng trong phiên này.'; }
+  });
+  document.getElementById('cloudflareDeleteKey').addEventListener('click', () => {
+    try {
+      [K_URL, K_MODEL, K_TOKEN].forEach(k => localStorage.removeItem(k));
+      cfWorkerUrlInput.value = ''; cfAppTokenInput.value = ''; cfAppTokenInput.type = 'password';
+      toggle.textContent = 'Hiện mã'; toggle.setAttribute('aria-pressed', 'false');
+      status.textContent = 'Đã xóa cấu hình đã lưu trên trình duyệt này.';
+    } catch (e) { status.textContent = 'Không xóa được cấu hình đã lưu. Hãy kiểm tra quyền lưu dữ liệu của trình duyệt.'; }
+  });
+  toggle.addEventListener('click', () => {
+    const visible = cfAppTokenInput.type === 'password'; cfAppTokenInput.type = visible ? 'text' : 'password';
+    toggle.textContent = visible ? 'Ẩn mã' : 'Hiện mã'; toggle.setAttribute('aria-pressed', String(visible));
+  });
+  document.getElementById('cloudflareTestBtn').addEventListener('click', async () => {
+    const cfg = getCloudflareConfig();
+    try { validateCloudflareConfig(cfg); } catch (e) { status.textContent = e.message; return; }
+    status.textContent = 'Đang kiểm tra kết nối…';
+    const btn = document.getElementById('cloudflareTestBtn'); btn.disabled = true;
+    try {
+      const probe = 'Rà soát câu sau: "Sở Nông nghiệp và Môi trường tổ chức hợp vào ngày mai." Chỉ trả JSON {"loi":[]}.';
+      const t0 = Date.now();
+      const text = await callCloudflareWorker(cfg, probe, AbortSignal.timeout ? AbortSignal.timeout(60000) : undefined);
+      parseLooseSpellJson(text);
+      status.textContent = `✔ Kết nối thành công (${((Date.now() - t0) / 1000).toFixed(1)} giây). Có thể chọn “Cloudflare Workers AI” và bấm Rà soát.`;
+    } catch (e) {
+      status.textContent = '✖ ' + (e && e.name === 'TimeoutError' ? 'Quá thời gian chờ (60 giây).' : e.message);
+    } finally { btn.disabled = false; }
+  });
+  document.getElementById('cfCopySourceBtn').addEventListener('click', async () => {
+    const ta = document.getElementById('cfWorkerSource');
+    try { await navigator.clipboard.writeText(ta.value); status.textContent = 'Đã sao chép mã nguồn Worker.'; }
+    catch (e) { ta.select(); status.textContent = 'Đã chọn sẵn mã nguồn — nhấn Ctrl+C để sao chép.'; }
+  });
+})();
+
 document.querySelectorAll('input[name="phuongPhapChinhTa"]').forEach(r => {
   r.addEventListener('change', () => {
-    claudeKeyBox.style.display = (r.value === 'claude' && r.checked) ? 'block' : claudeKeyBox.style.display;
-    geminiKeyBox.style.display = (r.value === 'gemini' && r.checked) ? 'block' : geminiKeyBox.style.display;
-    if (r.checked && r.value !== 'claude') claudeKeyBox.style.display = 'none';
-    if (r.checked && r.value !== 'gemini') geminiKeyBox.style.display = 'none';
+    if (!r.checked) return;
+    claudeKeyBox.style.display = r.value === 'claude' ? 'block' : 'none';
+    geminiKeyBox.style.display = r.value === 'gemini' ? 'block' : 'none';
+    cloudflareKeyBox.style.display = r.value === 'cloudflare' ? 'block' : 'none';
   });
 });
 
@@ -2272,6 +2530,8 @@ form.addEventListener('submit', async (e) => {
         if (phuongPhap === 'tu-dien') spellResult = await checkWithDictionaryBrowser(parsed.fullText, controller.signal);
         else if (phuongPhap === 'claude') spellResult = await checkWithClaudeBrowser(parsed.fullText, claudeApiKey, controller.signal);
         else if (phuongPhap === 'gemini') spellResult = await checkWithGeminiBrowser(parsed.fullText, geminiApiKey, controller.signal);
+        else if (phuongPhap === 'cloudflare') spellResult = await checkWithCloudflareBrowser(parsed.fullText, getCloudflareConfig(), controller.signal,
+          (i, n) => setLoading(true, `Đang rà chính tả bằng Cloudflare AI — đoạn ${i}/${n}…`, 3));
 
         // Gắn paraIndex cho kết quả AI (chưa có sẵn như từ điển tĩnh) bằng cách khớp
         // "tuSai" với đoạn văn chứa nó, để phục vụ bấm-để-xem-vị-trí & áp dụng sửa.
