@@ -1994,9 +1994,90 @@ function extractJson(text) {
   return result;
 }
 
+// ---------- Thông báo lỗi AI dễ hiểu (Claude/Gemini) ----------
+// Lỗi có cấu trúc: tiêu đề ngắn + giải thích nguyên nhân + việc nên làm + chi tiết kỹ thuật (thu gọn).
+class AiProviderError extends Error {
+  constructor(title, message, hints, technical) {
+    super(title + ': ' + message);
+    this.name = 'AiProviderError';
+    this.title = title; this.detail = message; this.hints = hints || []; this.technical = technical || '';
+  }
+}
+
+function describeAiHttpError(provider, status, rawText) {
+  const TEN = provider === 'gemini' ? 'Gemini (Google)' : 'Claude (Anthropic)';
+  const NCC = provider === 'gemini' ? 'Google' : 'Anthropic';
+  let apiMsg = '', apiStatus = '';
+  try {
+    const j = JSON.parse(rawText); const e = (j && j.error) ? j.error : j;
+    apiMsg = (e && e.message) || ''; apiStatus = (e && (e.status || e.type)) || '';
+  } catch (e) { apiMsg = String(rawText || ''); }
+  const low = (apiMsg + ' ' + apiStatus).toLowerCase();
+  const technical = `HTTP ${status}${apiStatus ? ' · ' + apiStatus : ''}${apiMsg ? ' — ' + apiMsg.slice(0, 300) : ''}`;
+  const KHAC = 'Hoặc chọn phương pháp rà chính tả khác (từ điển tĩnh, Cloudflare, ' + (provider === 'gemini' ? 'Claude' : 'Gemini') + ') rồi rà lại.';
+  const NOTE = 'Kết quả rà soát thể thức ở trên vẫn dùng được bình thường.';
+
+  if (status === 503 || status === 529 || (status >= 500 && /overload|high demand|unavailable/.test(low))) {
+    return new AiProviderError(`${TEN} đang quá tải`,
+      `Máy chủ ${NCC} đang có quá nhiều người dùng cùng lúc nên chưa xử lý được yêu cầu. Đây là sự cố tạm thời từ phía ${NCC}, không phải do API key hay file văn bản của bạn. ${NOTE}`,
+      ['Chờ 1–2 phút rồi bấm “Rà soát ngay” lại (thường tự hết).', KHAC], technical);
+  }
+  if (status === 429) {
+    return new AiProviderError(`Đã vượt hạn mức sử dụng ${TEN}`,
+      'Gửi quá nhiều yêu cầu trong thời gian ngắn, hoặc đã dùng hết hạn mức của API key (theo phút/ngày). ' + NOTE,
+      ['Chờ khoảng 1 phút rồi thử lại.',
+       provider === 'gemini' ? 'Gói miễn phí của Gemini có hạn mức theo ngày — nếu đã dùng nhiều, hãy thử lại vào ngày mai.' : 'Vào Console của Anthropic kiểm tra hạn mức và số dư (credit).',
+       KHAC], technical);
+  }
+  if (/credit balance|billing|insufficient/.test(low)) {
+    return new AiProviderError('Tài khoản chưa đủ số dư để dùng API',
+      'Tài khoản Anthropic không còn đủ số dư (credit) cho yêu cầu này. ' + NOTE,
+      ['Vào console.anthropic.com → Billing để nạp thêm credit.', KHAC], technical);
+  }
+  if (status === 401 || status === 403 || /api key not valid|api_key_invalid|invalid x-api-key|authentication|permission/.test(low) || (status === 400 && /api key/.test(low))) {
+    return new AiProviderError('API key không hợp lệ hoặc không có quyền',
+      `${NCC} từ chối API key đang dùng. Key có thể bị nhập sai/thừa khoảng trắng, đã bị xóa, hoặc chưa được cấp quyền. ` + NOTE,
+      ['Kiểm tra lại key: bấm “Hiện khóa” để xem, đảm bảo dán đủ và không thừa ký tự.', 'Nếu nghi ngờ, tạo key mới theo mục “Xem hướng dẫn lấy key” rồi bấm “Lưu khóa API”.'], technical);
+  }
+  if (status === 404) {
+    return new AiProviderError('Không tìm thấy mô hình AI',
+      `${NCC} không còn mô hình mà ứng dụng đang gọi (có thể đã đổi tên hoặc ngừng hỗ trợ). ` + NOTE,
+      ['Tạm thời dùng phương pháp rà chính tả khác.', 'Cần cập nhật ứng dụng sang tên mô hình mới — báo người phụ trách để chỉnh.'], technical);
+  }
+  if (status === 413 || (status === 400 && /too long|too large|token|exceed|size/.test(low))) {
+    return new AiProviderError('Văn bản quá dài so với giới hạn của AI',
+      `Nội dung văn bản vượt giới hạn mà ${TEN} xử lý trong một lần. ` + NOTE,
+      ['Dùng phương pháp Cloudflare Workers AI (tự chia nhỏ văn bản) hoặc từ điển tĩnh.', 'Hoặc tách văn bản thành các phần ngắn hơn rồi rà từng phần.'], technical);
+  }
+  if (status >= 500) {
+    return new AiProviderError(`Máy chủ ${NCC} gặp sự cố`,
+      `${NCC} báo lỗi nội bộ (mã ${status}); thường là tạm thời. ` + NOTE,
+      ['Chờ vài phút rồi thử lại.', KHAC], technical);
+  }
+  return new AiProviderError(`${TEN} trả về lỗi (mã ${status})`,
+    'Yêu cầu không được chấp nhận. ' + NOTE,
+    ['Thử lại một lần nữa.', 'Nếu vẫn lỗi, mở “Chi tiết kỹ thuật” bên dưới và gửi cho người phụ trách.', KHAC], technical);
+}
+
+async function aiFetch(provider, url, options) {
+  const TEN = provider === 'gemini' ? 'Gemini (Google)' : 'Claude (Anthropic)';
+  const host = provider === 'gemini' ? 'generativelanguage.googleapis.com' : 'api.anthropic.com';
+  let resp;
+  try { resp = await fetch(url, options); }
+  catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    throw new AiProviderError(`Không kết nối được tới ${TEN}`,
+      'Máy tính không gửi được yêu cầu tới máy chủ AI. Thường do mất mạng, hoặc mạng cơ quan/tường lửa/VPN đang chặn trang ' + host + '. Kết quả rà soát thể thức ở trên vẫn dùng được bình thường.',
+      ['Kiểm tra kết nối Internet rồi thử lại.', 'Nếu dùng mạng cơ quan, nhờ bộ phận CNTT mở truy cập tới ' + host + ', hoặc chọn phương pháp khác (từ điển tĩnh chạy offline).'],
+      String(e && e.message || e));
+  }
+  if (!resp.ok) throw describeAiHttpError(provider, resp.status, await resp.text());
+  return resp;
+}
+
 async function checkWithClaudeBrowser(fullText, apiKey, signal) {
-  if (!apiKey) throw new Error('Thiếu Claude API key.');
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+  if (!apiKey) throw new AiProviderError('Chưa nhập Claude API key', 'Bạn đã chọn rà chính tả bằng Claude nhưng ô API key đang trống.', ['Dán API key vào ô “Claude API key” (xem “Chưa có Claude API key?” để lấy key).', 'Hoặc chọn phương pháp khác như từ điển tĩnh (không cần key).']);
+  const resp = await aiFetch('claude', 'https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal,
     headers: {
@@ -2011,10 +2092,6 @@ async function checkWithClaudeBrowser(fullText, apiKey, signal) {
       messages: [{ role: 'user', content: SPELL_PROMPT(fullText) }],
     }),
   });
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Claude API lỗi (${resp.status}): ${errText.slice(0, 300)}`);
-  }
   const data = await resp.json();
   const textBlock = (data.content || []).find(c => c.type === 'text');
   const parsed = extractJson(textBlock ? textBlock.text : '{}');
@@ -2022,19 +2099,15 @@ async function checkWithClaudeBrowser(fullText, apiKey, signal) {
 }
 
 async function checkWithGeminiBrowser(fullText, apiKey, signal) {
-  if (!apiKey) throw new Error('Thiếu Gemini API key.');
+  if (!apiKey) throw new AiProviderError('Chưa nhập Gemini API key', 'Bạn đã chọn rà chính tả bằng Gemini nhưng ô API key đang trống.', ['Dán API key vào ô “Gemini API key” (xem “Chưa có Gemini API key?” để lấy key miễn phí).', 'Hoặc chọn phương pháp khác như từ điển tĩnh (không cần key).']);
   const model = 'gemini-3.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const resp = await fetch(url, {
+  const resp = await aiFetch('gemini', url, {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: SPELL_PROMPT(fullText) }] }] }),
   });
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Gemini API lỗi (${resp.status}): ${errText.slice(0, 300)}`);
-  }
   const data = await resp.json();
   const text = data && data.candidates && data.candidates[0] && data.candidates[0].content
     ? data.candidates[0].content.parts[0].text : '{}';
@@ -2547,7 +2620,7 @@ form.addEventListener('submit', async (e) => {
         }
       } catch (err) {
         if (isCancelError(err)) throw err;
-        spellError = err.message;
+        spellError = (err instanceof AiProviderError) ? err : err.message;
       }
     }
 
@@ -3255,7 +3328,25 @@ function renderResult(data) {
   if (data.spellError) {
     const div = el('div', { className: 'issue nghiem-trong' });
     div.appendChild(badge('nghiem-trong'));
-    div.appendChild(document.createTextNode(' Không thể rà chính tả: ' + data.spellError));
+    const se = data.spellError;
+    if (typeof se === 'object' && se) {
+      div.appendChild(el('strong', { text: ' Không thể rà chính tả — ' + se.title }));
+      div.appendChild(el('p', { text: se.detail, attrs: { style: 'margin:8px 0 4px' } }));
+      if (se.hints && se.hints.length) {
+        div.appendChild(el('div', { text: 'Bạn có thể làm:', attrs: { style: 'font-weight:bold;margin-top:6px' } }));
+        const ul = el('ul', { attrs: { style: 'margin:4px 0 6px;padding-left:20px' } });
+        se.hints.forEach(h => ul.appendChild(el('li', { text: h })));
+        div.appendChild(ul);
+      }
+      if (se.technical) {
+        const det = el('details', { attrs: { style: 'margin-top:6px;font-size:12.5px;color:#5f5847' } });
+        det.appendChild(el('summary', { text: 'Chi tiết kỹ thuật (để gửi cho người phụ trách nếu cần)' }));
+        det.appendChild(el('div', { text: se.technical, attrs: { style: 'font-family:Courier New,monospace;word-break:break-word;margin-top:4px' } }));
+        div.appendChild(det);
+      }
+    } else {
+      div.appendChild(document.createTextNode(' Không thể rà chính tả: ' + se));
+    }
     spellBox.appendChild(div);
   } else if (!data.spellResult) {
     spellBox.appendChild(el('div', { className: 'hint', text: 'Không rà chính tả (theo lựa chọn).' }));
